@@ -11,14 +11,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Compile ESPHome firmware
-        uses: esphome/build-action@v7.0.0
-        with:
-          yaml-file: weatherstation.yaml
-          version: latest
+      - name: Create output dir
+        run: mkdir -p ./output
 
-      - name: Download bin固件
+      - name: Run ESPHome docker compile
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/config \
+            -v ${{ github.workspace }}/output:/build \
+            esphome/esphome:latest \
+            compile /config/weatherstation.yaml
+
+      - name: Copy firmware bin
+        run: cp -r ./output/* ./firmware/
+
+      - name: Upload artifact bin
         uses: actions/upload-artifact@v4
         with:
           name: weather‑station‑firmware
-          path: ./build/*.bin
+          path: ./firmware/*.bin

@@ -1,4 +1,5 @@
 name: Build ESPHome Firmware
+
 on:
   push:
     branches: [ main ]
@@ -8,26 +9,26 @@ jobs:
   build_firmware:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Create output dir
-        run: mkdir -p ./output
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-      - name: Run ESPHome docker compile
+      - name: Install ESPHome
+        run: pip install esphome
+
+      - name: Compile all yaml
         run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/config \
-            -v ${{ github.workspace }}/output:/build \
-            esphome/esphome:latest \
-            compile /config/weatherstation.yaml
+          for file in *.yaml; do
+            esphome compile "$file"
+          done
 
-      - name: Copy firmware bin
-        run: cp -r ./output/* ./firmware/
-
-      - name: Upload artifacts
-  uses: actions/upload-artifact@v4
-  with:
-    name: esphome-firmware
-    path: |
-      ./**/.esphome/build/*/.pio/build/*/*.bin
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: esphome-firmware
+          path: |
+            ./**/.esphome/build/*/.pio/build/*/*.bin

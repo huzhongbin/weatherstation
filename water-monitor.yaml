@@ -1,0 +1,394 @@
+esphome:
+  name: water-monitor
+  friendly_name: 净水器监测
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+wifi:
+  ssid: "mijia"
+  password: "09081005"
+  ap:
+    ssid: "Water‑Monitor‑AP"
+    password: "12345678"
+
+captive_portal:
+
+ota:
+  platform: esphome
+  password: "12345678"
+
+api:
+
+logger:
+  level: INFO
+
+globals:
+  - id: high_pressure_start_time
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: tds_buf
+    type: std::array<uint8_t,11>
+    restore_value: no
+  - id: tds_buf_idx
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: tds_ch_sel
+    type: uint8_t
+    restore_value: no
+    initial_value: "1"
+
+uart:
+  - id: tds_uart
+    tx_pin: GPIO10
+    rx_pin: GPIO3
+    baud_rate: 9600
+    data_bits: 8
+    parity: NONE
+    stop_bits: 1
+    rx_buffer_size: 24
+    debug:
+      direction: RX
+      after:
+        lambda: |-
+          for (uint8_t byte : data) {
+            if(byte == 0x55) id(tds_buf_idx) = 0;
+            if(id(tds_buf_idx) <11){
+              id(tds_buf)[id(tds_buf_idx)] = byte;
+              id(tds_buf_idx)++;
+            }
+            if(id(tds_buf_idx) >= 11){
+              uint8_t *buf = id(tds_buf).data();
+              if(buf[0]==0x55 && buf[1]==0x0A){
+                uint8_t ch_r = buf[3];
+                int16_t ec_raw = (buf[4] <<8) | buf[5];
+                int16_t temp_raw = (buf[6] <<8) | buf[7];
+                float ec = ec_raw /10.0f;
+                float temp = temp_raw /10.0f;
+                if(ch_r ==1){
+                  id(ec_in).publish_state(ec);
+                  id(tds_in).publish_state(ec / 2.0f);
+                  id(tds_temp_in).publish_state(temp);
+                }else if(ch_r ==2){
+                  id(ec_out).publish_state(ec);
+                  id(tds_out).publish_state(ec / 2.0f);
+                  id(tds_temp_out).publish_state(temp);
+                }
+              }
+              id(tds_buf_idx)=0;
+            }
+          }
+
+interval:
+  - interval: 1s
+    then:
+      - lambda: |-
+          uint8_t cmd[8] = {0x55,0x07,0x05,id(tds_ch_sel),0x00,0x00,0x00,0x00};
+          uint8_t sum=0;
+          for(int i=0;i<7;i++) sum += cmd[i];
+          cmd[7] = sum;
+          id(tds_uart).write_array(cmd,8);
+          id(tds_ch_sel) = (id(tds_ch_sel)==1)?2:1;
+
+i2c:
+  sda: GPIO6
+  scl: GPIO7
+  scan: true
+
+ads1115:
+  id: ads_hub
+  address: 0x48
+
+sensor:
+  - platform: pulse_counter
+    pin: GPIO4
+    id: pure_pulse
+    update_interval: 1s
+    internal_filter: 13us
+    total:
+      id: pure_total_l
+      unit_of_measurement: "L"
+      filters:
+        - multiply: 0.0001938
+
+  - platform: pulse_counter
+    pin: GPIO5
+    id: waste_pulse
+    update_interval: 1s
+    internal_filter: 13us
+    total:
+      id: waste_total_l
+      unit_of_measurement: "L"
+      filters:
+        - multiply: 0.0001938
+
+  - platform: ads1115
+    ads1115_id: ads_hub
+    gain: 4.096
+    multiplexer: A0_GND
+    id: pressure_adc_raw
+    update_interval: 2s
+    internal: true
+
+  - platform: ads1115
+    ads1115_id: ads_hub
+    gain: 4.096
+    multiplexer: A1_GND
+    id: ntc_adc_raw
+    update_interval: 2s
+    internal: true
+
+  - platform: template
+    id: water_pressure
+    name: "进水压力"
+    unit_of_measurement: MPa
+    accuracy_decimals: 3
+    lambda: |-
+      float adc_raw = id(pressure_adc_raw).state;
+      float voltage = adc_raw * 6.144 / 32768.0;
+      float mp = (voltage - 0.5) * 1.2 / 4.0;
+      if(mp < 0) return 0;
+      return mp;
+
+  - platform: template
+    id: water_temp
+    name: "进水温度"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    lambda: |-
+      float adc_val = id(ntc_adc_raw).state;
+      if(adc_val <= 0.05) return NAN;
+      const float B = 3380.0;
+      const float R0 = 10000.0;
+      const float T0 = 298.15;
+      float R = (3.3f - adc_val) / adc_val * R0;
+      float tk = 1.0 / (1.0/T0 + log(R/R0) / B);
+      return tk - 273.15;
+
+  - platform: template
+    id: pure_flow
+    name: "纯水瞬时流量"
+    unit_of_measurement: "L/min"
+    accuracy_decimals: 2
+    lambda: |-
+      return id(pure_pulse).state * 0.0001938 * 60.0;
+
+  - platform: template
+    id: waste_flow
+    name: "废水瞬时流量"
+    unit_of_measurement: "L/min"
+    accuracy_decimals: 2
+    lambda: |-
+      return id(waste_pulse).state * 0.0001938 * 60.0;
+
+  - platform: template
+    id: pure_liter
+    name: "纯水累计"
+    unit_of_measurement: "L"
+    accuracy_decimals: 2
+    lambda: |-
+      return id(pure_total_l).state;
+
+  - platform: template
+    id: waste_liter
+    name: "废水累计"
+    unit_of_measurement: "L"
+    accuracy_decimals: 2
+    lambda: |-
+      return id(waste_total_l).state;
+
+  - platform: template
+    id: waste_ratio
+    name: "废水比"
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    lambda: |-
+      float p = id(pure_liter).state;
+      float w = id(waste_liter).state;
+      if(p < 0.1) return NAN;
+      return (w / p) * 100.0f;
+
+  - platform: template
+    name: "进水电导率"
+    id: ec_in
+    unit_of_measurement: "μS/cm"
+  - platform: template
+    name: "进水TDS"
+    id: tds_in
+    unit_of_measurement: "ppm"
+  - platform: template
+    name: "进水TDS温度"
+    id: tds_temp_in
+    unit_of_measurement: "°C"
+
+  - platform: template
+    name: "纯水电导率"
+    id: ec_out
+    unit_of_measurement: "μS/cm"
+  - platform: template
+    name: "纯水TDS"
+    id: tds_out
+    unit_of_measurement: "ppm"
+  - platform: template
+    name: "纯水TDS温度"
+    id: tds_temp_out
+    unit_of_measurement: "°C"
+
+  - platform: template
+    id: ro_rejection
+    name: RO脱盐率
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    lambda: |-
+      float ein = id(ec_in).state;
+      float eout = id(ec_out).state;
+      if(ein <5) return NAN;
+      return 100.0 * (1.0 - eout/ein);
+
+  - platform: template
+    name: PP棉剩余
+    id: filter_pp_remain_pct
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    lambda: |-
+      float cap = id(filter_pp_total).state;
+      float used = id(pure_liter).state;
+      float rem = 100.0*(cap-used)/cap;
+      return rem>0?rem:0.0f;
+
+  - platform: template
+    name: 前置炭剩余
+    id: filter_prec_remain_pct
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    lambda: |-
+      float cap = id(filter_prec_total).state;
+      float used = id(pure_liter).state;
+      float rem = 100.0*(cap-used)/cap;
+      return rem>0?rem:0.0f;
+
+  - platform: template
+    name: RO膜剩余
+    id: filter_ro_remain_pct
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    lambda: |-
+      float cap = id(filter_ro_total).state;
+      float used = id(pure_liter).state;
+      float rem = 100.0*(cap-used)/cap;
+      return rem>0?rem:0.0f;
+
+  - platform: template
+    name: 后置炭剩余
+    id: filter_postc_remain_pct
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    lambda: |-
+      float cap = id(filter_postc_total).state;
+      float used = id(pure_liter).state;
+      float rem = 100.0*(cap-used)/cap;
+      return rem>0?rem:0.0f;
+
+  - platform: template
+    id: high_pressure_duration
+    name: "高压开关持续时长"
+    unit_of_measurement: "秒"
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: |-
+      if(!id(high_pressure_switch).state) return 0;
+      int now_ts = id(sys_time).now().timestamp;
+      int start_ts = id(high_pressure_start_time);
+      if(start_ts == 0) return 0;
+      int diff = now_ts - start_ts;
+      return diff > 0 ? diff : 0;
+
+number:
+  - platform: template
+    name: "PP棉总处理水量"
+    id: filter_pp_total
+    optimistic: true
+    initial_value: 6000
+    min_value: 1000
+    max_value: 20000
+    step: 100
+    restore_value: true
+
+  - platform: template
+    name: "前置炭总处理水量"
+    id: filter_prec_total
+    optimistic: true
+    initial_value: 6000
+    min_value: 1000
+    max_value: 20000
+    step: 100
+    restore_value: true
+
+  - platform: template
+    name: "RO膜总处理水量"
+    id: filter_ro_total
+    optimistic: true
+    initial_value: 12000
+    min_value: 1000
+    max_value: 30000
+    step: 100
+    restore_value: true
+
+  - platform: template
+    name: "后置炭总处理水量"
+    id: filter_postc_total
+    optimistic: true
+    initial_value: 6000
+    min_value: 1000
+    max_value: 20000
+    step: 100
+    restore_value: true
+
+time:
+  - platform: sntp
+    id: sys_time
+    servers: "ntp.aliyun.com"
+    timezone: "CST-8"
+
+binary_sensor:
+  - platform: gpio
+    id: high_pressure_switch
+    name: "高压开关"
+    pin:
+      number: GPIO21
+      mode: INPUT_PULLUP
+      inverted: true
+    device_class: opening
+    on_press:
+      lambda: |-
+        id(high_pressure_start_time) = id(sys_time).now().timestamp;
+    on_release:
+      lambda: |-
+        id(high_pressure_start_time) = 0;
+
+text_sensor:
+  - platform: template
+    id: high_pressure_status_text
+    name: "高压开关状态"
+    lambda: |-
+      if(!id(high_pressure_switch).state){
+        return std::string("正常");
+      }
+      int dur = id(high_pressure_duration).state;
+      if(dur < 600){
+        return std::string("水满停机");
+      }
+      return std::string("⚠高压开关故障！");
+
+  - platform: template
+    name: "设备状态提示"
+    id: dev_status
+    lambda: |-
+      if(id(high_pressure_switch).state && id(high_pressure_duration).state >= 600){
+        return std::string("⚠高压开关故障");
+      }
+      return std::string("正常监测中");

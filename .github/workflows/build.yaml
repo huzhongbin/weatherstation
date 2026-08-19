@@ -25,8 +25,9 @@ jobs:
       - name: Copy firmware bin
         run: cp -r ./output/* ./firmware/
 
-      - name: Upload artifact bin
-        uses: actions/upload-artifact@v4
-        with:
-          name: weather‑station‑firmware
-          path: ./firmware/*.bin
+      - name: Upload artifacts
+  uses: actions/upload-artifact@v4
+  with:
+    name: esphome-firmware
+    path: |
+      ./**/.esphome/build/*/.pio/build/*/*.bin

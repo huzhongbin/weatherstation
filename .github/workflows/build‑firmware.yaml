@@ -29,6 +29,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: weatherstation-firmware
-          path: |
-            ./.esphome/build/weatherstation/.pioenvs/weatherstation/*.bin
-            ./.esphome/build/weatherstation/.pioenvs/weatherstation/*.uf2
+          path: ./.esphome/build/*/.pioenvs/*/*.bin

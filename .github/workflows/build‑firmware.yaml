@@ -24,7 +24,7 @@ jobs:
       - name: Compile firmware
         run: esphome compile weatherstation.yaml
 
-      - name: Debug list firmware path
+      - name: Debug 打印全部固件文件
         run: |
           pwd
           ls -la ./.esphome/build/
@@ -34,6 +34,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: weatherstation-firmware
-          path: |
-            ./.esphome/build/*/.pioenvs/*/firmware.bin
-            ./.esphome/build/*/.pioenvs/*/firmware.ota.bin
+          path: ./.esphome/build/**/firmware*.bin

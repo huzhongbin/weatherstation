@@ -24,15 +24,16 @@ jobs:
       - name: Compile firmware
         run: esphome compile weatherstation.yaml
 
-      - name: List build dir (debug看真实路径)
+      - name: Debug list firmware path
         run: |
-          ls -la ~/.esphome/build/
-          find ~/.esphome/build -name "firmware*.bin"
+          pwd
+          ls -la ./.esphome/build/
+          find ./.esphome/build -name "firmware*.bin"
 
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@v4
         with:
           name: weatherstation-firmware
           path: |
-            ~/.esphome/build/*/.pioenvs/*/firmware.bin
-            ~/.esphome/build/*/.pioenvs/*/firmware.ota.bin
+            ./.esphome/build/*/.pioenvs/*/firmware.bin
+            ./.esphome/build/*/.pioenvs/*/firmware.ota.bin

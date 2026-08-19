@@ -1,0 +1,93 @@
+esphome:
+  name: weather-station
+  friendly_name: 终极气象站
+
+# 把原来的
+# esp32:
+#   board: esp32-s3-devkitc-1
+#   framework:
+#     type: esp-idf
+
+# 替换成下面这一段
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: arduino
+
+wifi:
+  ssid: "mijia"
+  password: ""
+  manual_ip:
+    static_ip: 10.100.40.200
+    gateway: 10.100.40.1
+    subnet: 255.255.255.0
+
+ota:
+  platform: esphome
+api:
+logger:
+  level: DEBUG
+
+uart:
+  id: mod_bus
+  tx_pin: GPIO15
+  rx_pin: GPIO16
+  baud_rate: 9600
+
+modbus:
+  uart_id: mod_bus
+  flow_control_pin: GPIO17   # ✅DE/RE控制脚放在这里！modbus根节点，不是modbus‑controller
+
+modbus_controller:
+  - id: weather_controller
+    address: 1
+    update_interval: 5s
+
+sensor:
+  #室外温度
+  - platform: modbus_controller
+    modbus_controller_id: weather_controller
+    name: "室外温度1"
+    register_type: holding
+    address: 0x0000
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    value_type: U_WORD
+    filters:
+      - multiply: 0.1
+
+  #室外湿度
+  - platform: modbus_controller
+    modbus_controller_id: weather_controller
+    name: "室外湿度"
+    register_type: holding
+    address: 0x0001
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    value_type: U_WORD
+    filters:
+      - multiply: 0.1
+
+  #大气压
+  - platform: modbus_controller
+    modbus_controller_id: weather_controller
+    name: "大气压"
+    register_type: holding
+    address: 0x0002
+    unit_of_measurement: "hPa"
+    accuracy_decimals: 1
+    value_type: U_WORD
+    filters:
+      - multiply: 0.1
+
+  #风速，启用请删除前面#号
+  # - platform: modbus_controller
+  #   modbus_controller_id: weather_controller
+  #   name: "风速"
+  #   register_type: holding
+  #   address: 0x0003
+  #   unit_of_measurement: "m/s"
+  #   accuracy_decimals: 1
+  #   value_type: U_WORD
+  #   filters:
+  #     - multiply: 0.1

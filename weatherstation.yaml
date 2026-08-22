@@ -8,12 +8,8 @@ esp32:
     type: arduino
 
 wifi:
-  ssid: "mijia"
+  ssid: "Mijia"
   password: "09081005"
-  manual_ip:
-    static_ip: 10.100.40.200
-    gateway: 10.100.40.1
-    subnet: 255.255.255.0
 
 ota:
   platform: esphome

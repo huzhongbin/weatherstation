@@ -48,7 +48,7 @@ sensor:
   - platform: modbus_controller
     id: out_temp
     modbus_controller_id: temp_baro_controller
-    name: "室外温度"
+    name: "室外温度1"
     register_type: holding
     address: 0x0000
     unit_of_measurement: "°C"
@@ -60,7 +60,7 @@ sensor:
   - platform: modbus_controller
     id: out_hum
     modbus_controller_id: temp_baro_controller
-    name: "室外湿度1"
+    name: "室外湿度2"
     register_type: holding
     address: 0x0001
     unit_of_measurement: "%"
@@ -72,7 +72,7 @@ sensor:
   - platform: modbus_controller
     id: out_press
     modbus_controller_id: temp_baro_controller
-    name: "大气压"
+    name: "大气压3"
     register_type: holding
     address: 0x0002
     unit_of_measurement: "hPa"
@@ -84,7 +84,7 @@ sensor:
   - platform: modbus_controller
     id: out_light
     modbus_controller_id: light_controller
-    name: "光照强度"
+    name: "光照强度4"
     register_type: holding
     address: 0x0007
     unit_of_measurement: "Lux"

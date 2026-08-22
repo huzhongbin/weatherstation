@@ -60,7 +60,7 @@ sensor:
   - platform: modbus_controller
     id: out_hum
     modbus_controller_id: temp_baro_controller
-    name: "室外湿度"
+    name: "室外湿度1"
     register_type: holding
     address: 0x0001
     unit_of_measurement: "%"

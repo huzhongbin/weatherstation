@@ -23,7 +23,6 @@ api:
 logger:
   level: DEBUG
 
-# 网页管理 80端口，浏览器打开设备页面，看日志、OTA上传固件
 web_server:
   port: 80
 
@@ -37,14 +36,18 @@ modbus:
   uart_id: mod_bus
   flow_control_pin: GPIO17
 
-# ==========设备1：温湿度气压一体，Modbus地址 01==========
+# ✅只写一次modbus_controller，两个设备用短横杠 "-" 做成列表
 modbus_controller:
   - id: temp_baro_controller
     address: 1
     update_interval: 5s
 
+  - id: light_controller
+    address: 2
+    update_interval: 5s
+
 sensor:
-  #室外温度
+  # 温湿度气压一体 地址1
   - platform: modbus_controller
     modbus_controller_id: temp_baro_controller
     name: "室外温度"
@@ -55,7 +58,7 @@ sensor:
     value_type: U_WORD
     filters:
       - multiply: 0.1
-  #室外湿度
+
   - platform: modbus_controller
     modbus_controller_id: temp_baro_controller
     name: "室外湿度"
@@ -66,7 +69,7 @@ sensor:
     value_type: U_WORD
     filters:
       - multiply: 0.1
-  #大气压
+
   - platform: modbus_controller
     modbus_controller_id: temp_baro_controller
     name: "大气压"
@@ -78,14 +81,7 @@ sensor:
     filters:
       - multiply: 0.1
 
-# ==========设备2：B‑RS‑L30光照传感器，修改地址为 2==========
-modbus_controller:
-  - id: light_controller
-    address: 2
-    update_interval: 5s
-
-sensor:
-  #光照度，0007H高，0008H低，大端模式 U_DWORD
+  # B‑RS‑L30光照传感器，地址2
   - platform: modbus_controller
     modbus_controller_id: light_controller
     name: "光照强度"

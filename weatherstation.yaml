@@ -46,6 +46,7 @@ modbus_controller:
 
 sensor:
   - platform: modbus_controller
+    id: out_temp
     modbus_controller_id: temp_baro_controller
     name: "室外温度"
     register_type: holding
@@ -57,6 +58,7 @@ sensor:
       - multiply: 0.1
 
   - platform: modbus_controller
+    id: out_hum
     modbus_controller_id: temp_baro_controller
     name: "室外湿度"
     register_type: holding
@@ -68,6 +70,7 @@ sensor:
       - multiply: 0.1
 
   - platform: modbus_controller
+    id: out_press
     modbus_controller_id: temp_baro_controller
     name: "大气压"
     register_type: holding
@@ -79,6 +82,7 @@ sensor:
       - multiply: 0.1
 
   - platform: modbus_controller
+    id: out_light
     modbus_controller_id: light_controller
     name: "光照强度"
     register_type: holding

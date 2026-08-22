@@ -36,18 +36,15 @@ modbus:
   uart_id: mod_bus
   flow_control_pin: GPIO17
 
-# ✅只写一次modbus_controller，两个设备用短横杠 "-" 做成列表
 modbus_controller:
   - id: temp_baro_controller
     address: 1
     update_interval: 5s
-
   - id: light_controller
     address: 2
     update_interval: 5s
 
 sensor:
-  # 温湿度气压一体 地址1
   - platform: modbus_controller
     modbus_controller_id: temp_baro_controller
     name: "室外温度"
@@ -81,7 +78,6 @@ sensor:
     filters:
       - multiply: 0.1
 
-  # B‑RS‑L30光照传感器，地址2
   - platform: modbus_controller
     modbus_controller_id: light_controller
     name: "光照强度"

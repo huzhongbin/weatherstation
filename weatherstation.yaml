@@ -2,13 +2,6 @@ esphome:
   name: weather-station
   friendly_name: 终极气象站
 
-# 把原来的
-# esp32:
-#   board: esp32-s3-devkitc-1
-#   framework:
-#     type: esp-idf
-
-# 替换成下面这一段
 esp32:
   board: esp32-s3-devkitc-1
   framework:
@@ -16,7 +9,7 @@ esp32:
 
 wifi:
   ssid: "mijia"
-  password: ""
+  password: "09081005"
   manual_ip:
     static_ip: 10.100.40.200
     gateway: 10.100.40.1
@@ -24,9 +17,15 @@ wifi:
 
 ota:
   platform: esphome
+
 api:
+
 logger:
   level: DEBUG
+
+# 网页管理 80端口，浏览器打开设备页面，看日志、OTA上传固件
+web_server:
+  port: 80
 
 uart:
   id: mod_bus
@@ -36,18 +35,19 @@ uart:
 
 modbus:
   uart_id: mod_bus
-  flow_control_pin: GPIO17   # ✅DE/RE控制脚放在这里！modbus根节点，不是modbus‑controller
+  flow_control_pin: GPIO17
 
+# ==========设备1：温湿度气压一体，Modbus地址 01==========
 modbus_controller:
-  - id: weather_controller
+  - id: temp_baro_controller
     address: 1
     update_interval: 5s
 
 sensor:
   #室外温度
   - platform: modbus_controller
-    modbus_controller_id: weather_controller
-    name: "室外温度1"
+    modbus_controller_id: temp_baro_controller
+    name: "室外温度"
     register_type: holding
     address: 0x0000
     unit_of_measurement: "°C"
@@ -55,10 +55,9 @@ sensor:
     value_type: U_WORD
     filters:
       - multiply: 0.1
-
   #室外湿度
   - platform: modbus_controller
-    modbus_controller_id: weather_controller
+    modbus_controller_id: temp_baro_controller
     name: "室外湿度"
     register_type: holding
     address: 0x0001
@@ -67,10 +66,9 @@ sensor:
     value_type: U_WORD
     filters:
       - multiply: 0.1
-
   #大气压
   - platform: modbus_controller
-    modbus_controller_id: weather_controller
+    modbus_controller_id: temp_baro_controller
     name: "大气压"
     register_type: holding
     address: 0x0002
@@ -80,14 +78,19 @@ sensor:
     filters:
       - multiply: 0.1
 
-  #风速，启用请删除前面#号
-  # - platform: modbus_controller
-  #   modbus_controller_id: weather_controller
-  #   name: "风速"
-  #   register_type: holding
-  #   address: 0x0003
-  #   unit_of_measurement: "m/s"
-  #   accuracy_decimals: 1
-  #   value_type: U_WORD
-  #   filters:
-  #     - multiply: 0.1
+# ==========设备2：B‑RS‑L30光照传感器，修改地址为 2==========
+modbus_controller:
+  - id: light_controller
+    address: 2
+    update_interval: 5s
+
+sensor:
+  #光照度，0007H高，0008H低，大端模式 U_DWORD
+  - platform: modbus_controller
+    modbus_controller_id: light_controller
+    name: "光照强度"
+    register_type: holding
+    address: 0x0007
+    unit_of_measurement: "Lux"
+    accuracy_decimals: 0
+    value_type: U_DWORD

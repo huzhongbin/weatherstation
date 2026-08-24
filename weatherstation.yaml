@@ -33,16 +33,16 @@ uart:
 modbus:
   uart_id: mod_bus
   flow_control_pin: GPIO17
+  send_wait_time: 400ms
+  turnaround_time: 300ms
 
 modbus_controller:
   - id: temp_baro_controller
     address: 1
     update_interval: 10s
-    response_wait_time: 300ms
   - id: light_controller
     address: 2
     update_interval: 10s
-    response_wait_time: 300ms
 
 sensor:
   - platform: modbus_controller

@@ -50,10 +50,10 @@ sensor:
     modbus_controller_id: temp_baro_controller
     name: "室外温度1"
     register_type: holding
-    address: 0x0000
+    address: 0x0001
     unit_of_measurement: "°C"
     accuracy_decimals: 1
-    value_type: U_WORD
+    value_type: S_WORD
     filters:
       - multiply: 0.1
 
@@ -62,7 +62,7 @@ sensor:
     modbus_controller_id: temp_baro_controller
     name: "室外湿度2"
     register_type: holding
-    address: 0x0001
+    address: 0x0000
     unit_of_measurement: "%"
     accuracy_decimals: 1
     value_type: U_WORD
@@ -74,12 +74,10 @@ sensor:
     modbus_controller_id: temp_baro_controller
     name: "大气压3"
     register_type: holding
-    address: 0x0002
+    address: 0x000A
     unit_of_measurement: "hPa"
     accuracy_decimals: 1
     value_type: U_WORD
-    filters:
-      - multiply: 0.1
 
   - platform: modbus_controller
     id: out_light
